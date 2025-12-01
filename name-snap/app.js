@@ -55,6 +55,11 @@ class BabyNameSnap {
         this.confirmSuggestionBtn = document.getElementById('confirm-suggestion');
         this.cancelSuggestionBtn = document.getElementById('cancel-suggestion');
         
+        // Instructions modal elements
+        this.infoBtn = document.getElementById('info-btn');
+        this.instructionsModal = document.getElementById('instructions-modal');
+        this.closeInstructionsBtn = document.getElementById('close-instructions');
+        
         // Matches elements
         this.matchesList = document.getElementById('matches-list');
         this.noMatches = document.getElementById('no-matches');
@@ -89,6 +94,10 @@ class BabyNameSnap {
         this.cancelSwitchBtn.addEventListener('click', () => this.hideUserModal());
         this.confirmSuggestionBtn.addEventListener('click', () => this.addSuggestion());
         this.cancelSuggestionBtn.addEventListener('click', () => this.hideSuggestModal());
+        
+        // Instructions modal events
+        this.infoBtn.addEventListener('click', () => this.showInstructions());
+        this.closeInstructionsBtn.addEventListener('click', () => this.hideInstructions());
         
         // Touch/mouse events for swiping
         this.bindSwipeEvents();
@@ -305,11 +314,49 @@ class BabyNameSnap {
         
         if (liked) {
             this.userData[this.currentUser].likes.push(currentName);
+            
+            // Check for new match!
+            this.checkForNewMatch(currentName);
         } else {
             this.userData[this.currentUser].passes.push(currentName);
         }
         
         this.saveUserData();
+    }
+
+    checkForNewMatch(nameLiked) {
+        // Get all other users who have swiped
+        const otherUsers = Object.keys(this.userData).filter(user => user !== this.currentUser);
+        
+        // Check if any other user also liked this name
+        const isMatch = otherUsers.some(user => {
+            const userLikes = this.userData[user]?.likes || [];
+            return userLikes.includes(nameLiked);
+        });
+        
+        if (isMatch) {
+            // Find who else liked it
+            const matchingUsers = otherUsers.filter(user => {
+                const userLikes = this.userData[user]?.likes || [];
+                return userLikes.includes(nameLiked);
+            });
+            
+            const fullName = `${nameLiked} ${this.lastName}`;
+            const partnersText = matchingUsers.length === 1 ? 
+                matchingUsers[0] : 
+                matchingUsers.join(' & ');
+            
+            // Show match notification
+            setTimeout(() => {
+                alert(`🎉 IT'S A MATCH! 🎉
+
+"${fullName}"
+
+Both you and ${partnersText} love this name! 💕
+
+Check your matches to see all your favorites together.`);
+            }, 800); // Delay to let swipe animation finish
+        }
     }
 
     animateSwipe(direction) {
@@ -403,6 +450,15 @@ class BabyNameSnap {
         this.suggestModal.classList.add('hidden');
     }
 
+    // Instructions modal functionality
+    showInstructions() {
+        this.instructionsModal.classList.remove('hidden');
+    }
+
+    hideInstructions() {
+        this.instructionsModal.classList.add('hidden');
+    }
+
     addSuggestion() {
         const suggestedName = this.suggestedNameInput.value.trim();
         const note = this.suggestionNoteInput.value.trim();
@@ -437,18 +493,56 @@ class BabyNameSnap {
     }
 
     buildNameQueue() {
-        // Start with original names
-        let nameQueue = [...shuffleArray(australianBoyNames)];
+        // Get all other users (partners)
+        const otherUsers = Object.keys(this.userData).filter(user => user !== this.currentUser);
         
-        // Add suggestions for other users
-        const otherUserSuggestions = this.suggestions.filter(s => s.suggestedBy !== this.currentUser);
-        otherUserSuggestions.forEach(suggestion => {
-            // Insert suggestions randomly throughout the queue
-            const randomIndex = Math.floor(Math.random() * nameQueue.length);
-            nameQueue.splice(randomIndex, 0, suggestion.name);
+        // Priority names: suggestions from partners and names partners liked
+        let priorityNames = [];
+        
+        // Add suggestions from partners (highest priority)
+        const partnerSuggestions = this.suggestions.filter(s => s.suggestedBy !== this.currentUser);
+        priorityNames = priorityNames.concat(partnerSuggestions.map(s => s.name));
+        
+        // Add names that partners liked (second priority)
+        otherUsers.forEach(user => {
+            const partnerLikes = this.userData[user]?.likes || [];
+            priorityNames = priorityNames.concat(partnerLikes);
         });
         
-        this.names = nameQueue;
+        // Remove duplicates from priority names
+        priorityNames = [...new Set(priorityNames)];
+        
+        // Start with shuffled original names
+        let remainingNames = shuffleArray(australianBoyNames.filter(name => !priorityNames.includes(name)));
+        
+        // Build smart queue: 70% priority names early, 30% mixed throughout
+        let smartQueue = [];
+        let priorityIndex = 0;
+        let remainingIndex = 0;
+        
+        // First 20 names: heavily favor priority names (80% priority, 20% regular)
+        for (let i = 0; i < Math.min(20, priorityNames.length + remainingNames.length); i++) {
+            if (priorityIndex < priorityNames.length && (Math.random() < 0.8 || remainingIndex >= remainingNames.length)) {
+                smartQueue.push(priorityNames[priorityIndex]);
+                priorityIndex++;
+            } else if (remainingIndex < remainingNames.length) {
+                smartQueue.push(remainingNames[remainingIndex]);
+                remainingIndex++;
+            }
+        }
+        
+        // Remaining names: 60% priority, 40% regular
+        while (priorityIndex < priorityNames.length || remainingIndex < remainingNames.length) {
+            if (priorityIndex < priorityNames.length && (Math.random() < 0.6 || remainingIndex >= remainingNames.length)) {
+                smartQueue.push(priorityNames[priorityIndex]);
+                priorityIndex++;
+            } else if (remainingIndex < remainingNames.length) {
+                smartQueue.push(remainingNames[remainingIndex]);
+                remainingIndex++;
+            }
+        }
+        
+        this.names = smartQueue;
         
         // Reset index if we're rebuilding mid-session
         if (this.currentIndex >= this.names.length) {
@@ -535,15 +629,43 @@ class BabyNameSnap {
 
     // Data export/import for privacy
     exportData() {
+        // Get current user's data only
+        const currentUserData = this.userData[this.currentUser] || { likes: [], passes: [] };
+        
+        // Get current matches
+        const matches = this.getMatches();
+        
+        // Get suggestions made by current user
+        const mySuggestions = this.suggestions.filter(s => s.suggestedBy === this.currentUser);
+        
         const data = {
-            userData: this.userData,
-            suggestions: this.suggestions,
+            // Only include current user's preferences (privacy!)
+            myData: {
+                user: this.currentUser,
+                likes: currentUserData.likes,
+                passes: currentUserData.passes,
+                totalSwiped: currentUserData.likes.length + currentUserData.passes.length
+            },
+            matches: matches.map(match => ({
+                name: match.name,
+                fullName: match.fullName,
+                users: match.users
+            })),
+            mySuggestions: mySuggestions,
+            // Include all suggestions for import purposes (but not other user's swipes)
+            allSuggestions: this.suggestions,
             state: {
                 lastName: this.lastName,
                 currentUser: this.currentUser,
                 currentIndex: this.currentIndex
             },
-            exportDate: new Date().toISOString()
+            exportDate: new Date().toISOString(),
+            exportSummary: {
+                totalMatches: matches.length,
+                namesLiked: currentUserData.likes.length,
+                namesPassed: currentUserData.passes.length,
+                suggestionsMade: mySuggestions.length
+            }
         };
         
         const dataStr = JSON.stringify(data, null, 2);
@@ -552,13 +674,23 @@ class BabyNameSnap {
         
         const link = document.createElement('a');
         link.href = url;
-        link.download = `baby-names-${this.lastName || 'data'}-${new Date().toISOString().split('T')[0]}.json`;
+        link.download = `baby-names-${this.currentUser}-${this.lastName || 'data'}-${new Date().toISOString().split('T')[0]}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        alert('Data exported! Share this file privately with your partner.');
+        const summary = `Data exported! 📤
+
+Your Summary:
+• ${matches.length} matches found! 💕
+• ${currentUserData.likes.length} names you loved ❤️
+• ${currentUserData.passes.length} names you passed 👎
+• ${mySuggestions.length} suggestions you made 💡
+
+Share this file privately with your partner.`;
+        
+        alert(summary);
     }
     
     importData(event) {
@@ -570,15 +702,57 @@ class BabyNameSnap {
             try {
                 const data = JSON.parse(e.target.result);
                 
-                if (confirm('This will replace all current data. Are you sure?')) {
-                    // Import data
-                    this.userData = data.userData || {};
-                    this.suggestions = data.suggestions || [];
+                // Handle both old and new export formats
+                let partnerData, suggestions, state;
+                
+                if (data.myData) {
+                    // New format - partner's data is in myData
+                    const partnerUser = data.myData.user;
+                    partnerData = {};
+                    partnerData[partnerUser] = {
+                        likes: data.myData.likes,
+                        passes: data.myData.passes
+                    };
+                    suggestions = data.allSuggestions || [];
+                    state = data.state;
+                } else {
+                    // Old format - direct userData
+                    partnerData = data.userData || {};
+                    suggestions = data.suggestions || [];
+                    state = data.state;
+                }
+                
+                const summary = data.exportSummary ? 
+                    `Import your partner's data?
+
+Their Summary:
+• ${data.exportSummary.totalMatches} matches found! 💕
+• ${data.exportSummary.namesLiked} names they loved ❤️
+• ${data.exportSummary.namesPassed} names they passed 👎
+• ${data.exportSummary.suggestionsMade} suggestions they made 💡
+
+This will merge with your existing data.` :
+                    'This will merge your partner\'s data with your existing data. Continue?';
+                
+                if (confirm(summary)) {
+                    // Merge partner data with existing data
+                    Object.keys(partnerData).forEach(user => {
+                        if (!this.userData[user]) {
+                            this.userData[user] = { likes: [], passes: [] };
+                        }
+                        this.userData[user] = partnerData[user];
+                    });
                     
-                    if (data.state) {
-                        this.lastName = data.state.lastName || '';
-                        this.currentUser = data.state.currentUser || '';
-                        this.currentIndex = data.state.currentIndex || 0;
+                    // Merge suggestions
+                    suggestions.forEach(suggestion => {
+                        if (!this.suggestions.some(s => s.name === suggestion.name && s.suggestedBy === suggestion.suggestedBy)) {
+                            this.suggestions.push(suggestion);
+                        }
+                    });
+                    
+                    // Update state if needed
+                    if (state && state.lastName && !this.lastName) {
+                        this.lastName = state.lastName;
                     }
                     
                     // Save to localStorage
@@ -587,8 +761,15 @@ class BabyNameSnap {
                     this.saveState();
                     this.buildNameQueue();
                     
-                    alert('Data imported successfully!');
-                    location.reload();
+                    alert('Partner data imported successfully! 🎉\n\nYou can now view your matches together!');
+                    
+                    // Refresh the current view
+                    if (this.swipingScreen.classList.contains('active')) {
+                        this.updateCard();
+                        this.updateProgress();
+                    } else if (this.matchesScreen.classList.contains('active')) {
+                        this.renderMatches();
+                    }
                 }
             } catch (error) {
                 alert('Error importing file. Please check the file format.');
