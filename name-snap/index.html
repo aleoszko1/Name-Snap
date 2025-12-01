@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baby Name Snap 👶</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>👶 Baby Name Snap</h1>
+            <p>Find the perfect Australian boy name together!</p>
+        </header>
+
+        <!-- Setup Screen -->
+        <div id="setup-screen" class="screen active">
+            <div class="setup-card">
+                <h2>Let's Get Started!</h2>
+                <div class="input-group">
+                    <label for="last-name">What's your last name?</label>
+                    <input type="text" id="last-name" placeholder="Enter your last name">
+                </div>
+                <div class="input-group">
+                    <label for="user-name">Your name (so we know who's swiping)</label>
+                    <input type="text" id="user-name" placeholder="Enter your first name">
+                </div>
+                <button id="start-swiping" class="btn primary">Start Swiping! 🚀</button>
+            </div>
+        </div>
+
+        <!-- Swiping Screen -->
+        <div id="swiping-screen" class="screen">
+            <div class="progress-bar">
+                <div class="progress-fill"></div>
+                <span class="progress-text">0 / 200</span>
+            </div>
+            
+            <div class="user-info">
+                <span id="current-user">Swiping as: <strong></strong></span>
+                <button id="switch-user" class="btn secondary small">Switch User</button>
+            </div>
+
+            <div class="card-container">
+                <div class="name-card" id="current-card">
+                    <div class="card-content">
+                        <h2 class="name-display" id="current-name">Loading...</h2>
+                        <p class="full-name-preview" id="full-name-preview"></p>
+                        <div class="card-number">#<span id="card-number">1</span></div>
+                    </div>
+                    <div class="swipe-indicators">
+                        <div class="like-indicator">❤️ LOVE IT!</div>
+                        <div class="pass-indicator">👎 PASS</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="pass-btn" class="btn pass">👎 Pass</button>
+                <button id="like-btn" class="btn like">❤️ Like</button>
+            </div>
+
+            <div class="bottom-nav">
+                <button id="suggest-name" class="btn secondary">💡 Suggest Name</button>
+                <button id="view-matches" class="btn secondary">View Matches</button>
+                <button id="export-data" class="btn secondary">📤 Export</button>
+                <button id="reset-app" class="btn secondary">Reset</button>
+            </div>
+        </div>
+
+        <!-- Matches Screen -->
+        <div id="matches-screen" class="screen">
+            <div class="matches-header">
+                <h2>💕 Your Matches!</h2>
+                <p>Names you both loved</p>
+                <div class="matches-nav">
+                    <button id="import-data" class="btn secondary">📥 Import Data</button>
+                    <button id="back-to-swiping" class="btn secondary">← Back to Swiping</button>
+                </div>
+                <input type="file" id="import-file" accept=".json" style="display: none;">
+            </div>
+            
+            <div id="matches-list" class="matches-list">
+                <!-- Matches will be populated here -->
+            </div>
+            
+            <div id="no-matches" class="no-matches hidden">
+                <h3>No matches yet! 😅</h3>
+                <p>Keep swiping to find names you both love</p>
+            </div>
+        </div>
+
+        <!-- User Switch Modal -->
+        <div id="user-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>Switch User</h3>
+                <div class="input-group">
+                    <label for="switch-user-name">Enter your name:</label>
+                    <input type="text" id="switch-user-name" placeholder="Your first name">
+                </div>
+                <div class="modal-actions">
+                    <button id="confirm-switch" class="btn primary">Switch</button>
+                    <button id="cancel-switch" class="btn secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Suggest Name Modal -->
+        <div id="suggest-modal" class="modal hidden">
+            <div class="modal-content">
+                <h3>💡 Suggest a Name</h3>
+                <p class="suggest-description">Add a name for your partner to consider</p>
+                <div class="input-group">
+                    <label for="suggested-name">Name suggestion:</label>
+                    <input type="text" id="suggested-name" placeholder="Enter a name">
+                </div>
+                <div class="input-group">
+                    <label for="suggestion-note">Optional note:</label>
+                    <input type="text" id="suggestion-note" placeholder="Why you like this name (optional)">
+                </div>
+                <div class="modal-actions">
+                    <button id="confirm-suggestion" class="btn primary">Add Suggestion</button>
+                    <button id="cancel-suggestion" class="btn secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="australian-boy-names.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
